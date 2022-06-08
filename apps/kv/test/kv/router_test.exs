@@ -1,13 +1,27 @@
 defmodule KV.RouterTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
+
+  setup_all do
+    current = Application.get_env(:kv, :routing_table)
+    {:ok, hostname} = :inet.gethostname()
+
+    Application.put_env(:kv, :routing_table, [
+      {?a..?m, :"foo@#{hostname}"},
+      {?n..?z, :"bar@#{hostname}"}
+    ])
+
+    on_exit(fn -> Application.put_env(:kv, :routing_table, current) end)
+  end
 
   @tag :distributed
   test "route requests across nodes" do
+    {:ok, hostname} = :inet.gethostname()
+
     assert KV.Router.route("hello", Kernel, :node, []) ==
-             :"foo@PC-Vincent"
+             :"foo@#{hostname}"
 
     assert KV.Router.route("world", Kernel, :node, []) ==
-             :"bar@PC-Vincent"
+             :"bar@#{hostname}"
   end
 
   test "raises on unknown entries" do
